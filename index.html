@@ -1,261 +1,328 @@
-import React, { useState, useEffect } from 'react';
-
-/**
- * Update: Penanganan Error & Debugging
- */
-
-const google = window.google || {
-  script: {
-    run: {
-      withSuccessHandler: (cb) => ({
-        withFailureHandler: (failCb) => ({
-          submitData: (data) => { 
-            console.log("Simulasi Kirim:", data); 
-            setTimeout(() => cb({status: 'success'}), 800); 
-          },
-          getPesertaData: () => { 
-            setTimeout(() => cb([]), 800); 
-          }
-        })
-      })
-    }
-  }
-};
-
-const MENU_MAKANAN = [
-  "Ayam Goreng", "Ayam Bakar", "Ayam Kampung Goreng", "Ayam Kampung Bakar", "Ayam Geprek Mewah",
-  "Bebek Goreng", "Bebek Bakar", "Bebek Pedas Bumbu Hitam",
-  "Nasgor Mewah", "Nasgor Sosis", "Mie Goreng Mewah",
-  "Gurame Goreng", "Gurame Bakar", "Lele Goreng"
-];
-
-const MENU_MINUMAN = [
-  "Es Teh", "Teh Hangat", "Kopi Tubruk", "Kopi Susu", "Lemon Tea Panas/Es",
-  "Es Jeruk", "Jeruk Hangat", "Soda Gembira", "Air Mineral",
-  "Juice Alpukat", "Juice Naga", "Juice Melon"
-];
-
-export default function App() {
-  const [view, setView] = useState('form'); 
-  const [loading, setLoading] = useState(false);
-  const [peserta, setPeserta] = useState([]);
-  const [formData, setFormData] = useState({ nama: '', makanan: '', minuman: '' });
-  const [msg, setMsg] = useState(null);
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = () => {
-    google.script.run
-      .withSuccessHandler((data) => setPeserta(data || []))
-      .withFailureHandler((err) => console.error("Gagal ambil data:", err))
-      .getPesertaData();
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!formData.nama || !formData.makanan || !formData.minuman) {
-      setMsg({ type: 'error', text: 'Woi! Isi semua datanya dulu!' });
-      return;
-    }
-    setLoading(true);
-    setMsg(null);
-    
-    // Menambahkan penanganan jika script Google gagal merespon
-    google.script.run
-      .withSuccessHandler((res) => {
-        setLoading(false);
-        if (res && res.status === 'success') {
-          setMsg({ type: 'success', text: 'GASPOL! Data sudah masuk ke Paddock!' });
-          setFormData({ nama: '', makanan: '', minuman: '' });
-          fetchData();
-          setTimeout(() => setView('peserta'), 1500);
-        } else {
-          setMsg({ type: 'error', text: 'Mesin Mogok: ' + (res?.message || 'Gagal simpan.') });
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HAJI BALAP - Bukber Racing</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Kanit:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: #050505;
+            color: #ffffff;
         }
-      })
-      .withFailureHandler((err) => {
-        setLoading(false);
-        setMsg({ type: 'error', text: 'Korslet! Cek koneksi atau izin script: ' + err.message });
-      })
-      .submitData(formData);
-  };
+        .racing-font { font-family: 'Bebas Neue', cursive; }
+        .carbon-bg {
+            background-color: #0a0a0a;
+            background-image: linear-gradient(45deg, #111 25%, transparent 25%), 
+                              linear-gradient(-45deg, #111 25%, transparent 25%), 
+                              linear-gradient(45deg, transparent 75%, #111 75%), 
+                              linear-gradient(-45deg, transparent 75%, #111 75%);
+            background-size: 15px 15px;
+        }
+        .skew-element { transform: skewX(-12deg); }
+        .inner-skew { transform: skewX(12deg); }
+        .btn-gradient {
+            background: linear-gradient(90deg, #ff0000 0%, #ffbb00 100%);
+        }
+        /* Custom scrollbar for a racing look */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: #ff0000; border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
 
-  const getRekap = () => {
-    const rekapMakanan = {};
-    const rekapMinuman = {};
-    peserta.forEach(p => {
-      rekapMakanan[p.makanan] = (rekapMakanan[p.makanan] || 0) + 1;
-      rekapMinuman[p.minuman] = (rekapMinuman[p.minuman] || 0) + 1;
-    });
-    return { makanan: rekapMakanan, minuman: rekapMinuman };
-  };
+    <script type="text/babel">
+        const { useState, useEffect } = React;
 
-  const NavItem = ({ id, label, icon }) => (
-    <button 
-      onClick={() => setView(id)}
-      className={`flex-1 py-3 px-2 text-[10px] font-black uppercase tracking-tighter flex flex-col items-center justify-center transition-all ${view === id ? 'bg-yellow-400 text-black border-t-2 border-black' : 'bg-zinc-900 text-zinc-500'}`}
-    >
-      <span className="text-xl mb-1">{icon}</span>
-      {label}
-    </button>
-  );
+        // URL APPS SCRIPT TERBARU ANDA
+        const API_URL = "https://script.google.com/macros/s/AKfycbzGBM9tng6nulfE45lMtK4ypB_GMG2aGlCVOCvP4-umfub7Pfyb5ocVR50-_iJk-Ig4/exec";
 
-  return (
-    <div className="min-h-screen bg-zinc-950 text-white font-sans selection:bg-yellow-400 selection:text-black">
-      {/* Header */}
-      <div className="bg-yellow-400 p-6 text-black skew-y-[-2deg] origin-left mb-8 shadow-2xl border-b-4 border-black">
-        <div className="skew-y-[2deg]">
-          <h1 className="text-4xl font-black italic uppercase leading-none tracking-tighter">
-            BUKBER <span className="block text-5xl">HAJI BALAP</span>
-          </h1>
-          <div className="flex gap-2 mt-2 items-center">
-            <div className="h-1 w-12 bg-black"></div>
-            <p className="text-[10px] font-bold uppercase tracking-widest italic">Fast Iftar & High Speed Brotherhood</p>
-          </div>
-        </div>
-      </div>
+        const MENU = {
+            makanan: ["Ayam Goreng", "Ayam Bakar", "Ayam Kampung Goreng", "Ayam Kampung Bakar", "Ayam Geprek Mewah", "Bebek Goreng", "Bebek Bakar", "Bebek Pedas Bumbu Hitam", "Nasgor Mewah", "Nasgor Sosis", "Mie Goreng Mewah", "Gurame Goreng", "Gurame Bakar", "Lele Goreng", "Cah Kangkung", "Kangkung Balacan", "Urap-Urap"],
+            minuman: ["Es Teh", "Teh Hangat", "Kopi Tubruk", "Kopi Susu", "Lemon Tea Panas / Es", "Es Jeruk", "Jeruk Hangat", "Soda Gembira", "Air Mineral 600ml", "Juice Alpukat", "Juice Buah Naga", "Juice Melon"]
+        };
 
-      <main className="px-4 pb-32 max-w-md mx-auto">
-        {msg && (
-          <div className={`mb-6 p-4 font-bold border-l-4 italic animate-pulse ${msg.type === 'success' ? 'bg-green-900/30 border-green-500 text-green-400' : 'bg-red-900/30 border-red-500 text-red-400'}`}>
-            {msg.text}
-          </div>
-        )}
+        function App() {
+            const [page, setPage] = useState('form');
+            const [nama, setNama] = useState('');
+            const [makanan, setMakanan] = useState('');
+            const [minuman, setMinuman] = useState('');
+            const [loading, setLoading] = useState(false);
+            const [isFetching, setIsFetching] = useState(false);
+            const [reservasi, setReservasi] = useState([]);
 
-        {view === 'form' && (
-          <section className="animate-in fade-in slide-in-from-bottom-4">
-            <div className="bg-zinc-900 border-2 border-zinc-800 rounded-xl p-6 relative overflow-hidden shadow-xl">
-              <h2 className="text-xl font-black italic mb-6 border-b-2 border-yellow-400 pb-2 inline-block uppercase">REGISTRASI PEMBALAP</h2>
-              
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div>
-                  <label className="block text-[10px] font-black text-zinc-500 uppercase mb-1 tracking-widest">Nama Driver</label>
-                  <input 
-                    type="text"
-                    value={formData.nama}
-                    onChange={e => setFormData({...formData, nama: e.target.value})}
-                    placeholder="Masukkan Nama Anda..."
-                    className="w-full bg-black border-2 border-zinc-800 rounded-lg p-3 focus:border-yellow-400 outline-none transition-all font-bold italic text-yellow-400"
-                  />
+            // Fetch data saat aplikasi dimuat dan saat halaman berubah
+            useEffect(() => {
+                fetchData();
+            }, []);
+
+            const fetchData = async () => {
+                setIsFetching(true);
+                try {
+                    // Menambahkan cache buster untuk menghindari data lama
+                    const response = await fetch(`${API_URL}?t=${new Date().getTime()}`);
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    const data = await response.json();
+                    setReservasi(data);
+                } catch (err) {
+                    console.error("Gagal mengambil data:", err);
+                } finally {
+                    setIsFetching(false);
+                }
+            };
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                if (!nama || !makanan || !minuman) return;
+                
+                setLoading(true);
+
+                try {
+                    // Kirim ke Google Sheets via POST
+                    // Menggunakan fetch dengan mode no-cors karena GAS tidak mendukung CORS POST tradisional secara penuh
+                    await fetch(API_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ nama, makanan, minuman })
+                    });
+
+                    // Reset form
+                    setNama('');
+                    setMakanan('');
+                    setMinuman('');
+                    
+                    // Delay untuk memberikan waktu Spreadsheet memproses data
+                    setTimeout(async () => {
+                        await fetchData();
+                        setPage('list');
+                        setLoading(false);
+                    }, 2000);
+
+                } catch (err) {
+                    console.error("Error submitting form:", err);
+                    alert("Gagal mengirim data. Pastikan koneksi internet stabil.");
+                    setLoading(false);
+                }
+            };
+
+            const getRekap = (type) => {
+                const counts = {};
+                reservasi.forEach(item => {
+                    const val = item[type];
+                    if(val) counts[val] = (counts[val] || 0) + 1;
+                });
+                return Object.entries(counts).sort((a,b) => b[1] - a[1]);
+            };
+
+            return (
+                <div className="min-h-screen flex flex-col carbon-bg">
+                    {/* Header Balap */}
+                    <header className="p-6 text-center relative border-b-8 border-yellow-400">
+                        <div className="absolute top-0 left-0 w-full h-2 bg-red-600"></div>
+                        <h1 className="racing-font text-6xl md:text-9xl italic font-black text-yellow-400 tracking-tighter drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)]">
+                            HAJI BALAP
+                        </h1>
+                        <p className="bg-red-600 text-white px-4 py-1 inline-block font-black skew-x-[-15deg] text-xs mt-2 uppercase italic tracking-widest">
+                            Official Bukber Championship
+                        </p>
+                    </header>
+
+                    {/* Navigasi */}
+                    <nav className="flex justify-center gap-1 p-4 overflow-x-auto no-scrollbar">
+                        {[
+                            {id: 'form', label: 'GAS DAFTAR', icon: '🚴'},
+                            {id: 'list', label: 'GRID START', icon: '🏁'},
+                            {id: 'rekap', label: 'KLASEMEN', icon: '📊'}
+                        ].map(nav => (
+                            <button 
+                                key={nav.id}
+                                onClick={() => {
+                                    setPage(nav.id);
+                                    if (nav.id !== 'form') fetchData();
+                                }}
+                                className={`px-5 py-2 skew-element transition-all whitespace-nowrap ${
+                                    page === nav.id ? 'bg-yellow-400 text-black font-black scale-105' : 'bg-zinc-900 text-zinc-500 font-bold'
+                                }`}
+                            >
+                                <div className="inner-skew flex items-center gap-2">
+                                    <span>{nav.icon}</span>
+                                    <span>{nav.label}</span>
+                                </div>
+                            </button>
+                        ))}
+                    </nav>
+
+                    <main className="flex-grow p-4 max-w-4xl mx-auto w-full">
+                        {page === 'form' && (
+                            <div className="bg-zinc-900/90 border-2 border-zinc-800 p-8 rounded-lg shadow-2xl backdrop-blur-md relative overflow-hidden">
+                                <div className="absolute -right-10 -top-10 opacity-5 pointer-events-none">
+                                    <svg width="200" height="200" viewBox="0 0 24 24" fill="white"><path d="M15.5,12c2.5,0,4.5-2,4.5-4.5S18,3,15.5,3S11,5,11,7.5S13,12,15.5,12z M15.5,5c1.4,0,2.5,1.1,2.5,2.5S16.9,10,15.5,10S13,8.9,13,7.5S14.1,5,15.5,5z M5,20.5C5,21.3,5.7,22,6.5,22h3c0.8,0,1.5-0.7,1.5-1.5s-0.7-1.5-1.5-1.5H8.6l3.5-5.9l2.8,2.3c0.4,0.3,1,0.3,1.3-0.1L21,11l-1.3-1.5l-4,3.2l-2.8-2.3c-0.4-0.3-1-0.3-1.3,0.1L5,19.3V20.5z"/></svg>
+                                </div>
+                                <h2 className="racing-font text-4xl mb-6 italic text-red-500 flex items-center gap-3">
+                                    <span className="bg-red-600 w-2 h-8 block"></span>
+                                    NEW ENTRY FORM
+                                </h2>
+                                <form onSubmit={handleSubmit} className="space-y-6">
+                                    <div className="relative group">
+                                        <label className="block text-[10px] font-black text-yellow-400 mb-1 tracking-[3px] uppercase italic">Nama Lengkap Pembalap</label>
+                                        <input 
+                                            type="text" 
+                                            value={nama}
+                                            onChange={(e) => setNama(e.target.value)}
+                                            className="w-full bg-black border-2 border-zinc-800 p-4 rounded focus:border-yellow-400 outline-none text-xl font-bold uppercase tracking-widest transition-all"
+                                            placeholder="CONTOH: HAJI BALAP..."
+                                            required
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-[10px] font-black text-yellow-400 mb-1 tracking-[3px] uppercase italic">Pilihan Makanan</label>
+                                            <select 
+                                                value={makanan}
+                                                onChange={(e) => setMakanan(e.target.value)}
+                                                className="w-full bg-black border-2 border-zinc-800 p-4 rounded focus:border-yellow-400 outline-none font-bold appearance-none cursor-pointer"
+                                                required
+                                            >
+                                                <option value="">-- PILIH MAKANAN --</option>
+                                                {MENU.makanan.map(m => <option key={m} value={m}>{m}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-black text-yellow-400 mb-1 tracking-[3px] uppercase italic">Pilihan Minuman</label>
+                                            <select 
+                                                value={minuman}
+                                                onChange={(e) => setMinuman(e.target.value)}
+                                                className="w-full bg-black border-2 border-zinc-800 p-4 rounded focus:border-yellow-400 outline-none font-bold appearance-none cursor-pointer"
+                                                required
+                                            >
+                                                <option value="">-- PILIH MINUMAN --</option>
+                                                {MENU.minuman.map(m => <option key={m} value={m}>{m}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <button 
+                                        disabled={loading}
+                                        type="submit"
+                                        className={`w-full py-5 text-black font-black text-3xl skew-element transition-all shadow-[0_5px_0px_#8b0000] active:shadow-none active:translate-y-1 ${loading ? 'bg-zinc-700 cursor-not-allowed' : 'btn-gradient hover:brightness-110'}`}
+                                    >
+                                        <div className="inner-skew flex items-center justify-center gap-3">
+                                            {loading ? (
+                                                <>
+                                                    <span className="animate-spin text-2xl">⚙️</span>
+                                                    <span>STAGING...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span>GASKEUN!</span>
+                                                    <span>🚀</span>
+                                                </>
+                                            )}
+                                        </div>
+                                    </button>
+                                </form>
+                            </div>
+                        )}
+
+                        {page === 'list' && (
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="racing-font text-4xl italic text-yellow-400 flex items-center gap-2">
+                                        <span className="w-8 h-8 bg-yellow-400 text-black flex items-center justify-center not-italic">🏁</span>
+                                        STARTING GRID
+                                    </h2>
+                                    <button 
+                                        onClick={fetchData} 
+                                        disabled={isFetching}
+                                        className="bg-zinc-800 px-4 py-2 text-xs rounded hover:bg-zinc-700 font-black tracking-widest flex items-center gap-2"
+                                    >
+                                        {isFetching ? '...' : 'REFRESH'} 🔄
+                                    </button>
+                                </div>
+                                {isFetching && reservasi.length === 0 ? (
+                                    <div className="text-center py-20 text-yellow-400 animate-pulse font-black italic tracking-widest">MENGHUBUNGKAN KE PIT STOP...</div>
+                                ) : (
+                                    <div className="grid gap-3">
+                                        {reservasi.length === 0 ? (
+                                            <div className="bg-zinc-900 border-2 border-dashed border-zinc-800 p-10 text-center text-zinc-600 rounded">GRID MASIH KOSONG. JADI YANG PERTAMA MENDAFTAR!</div>
+                                        ) : reservasi.map((item, idx) => (
+                                            <div key={idx} className="bg-zinc-900 flex items-center border-l-8 border-yellow-400 p-4 skew-element group hover:border-red-600 transition-colors shadow-lg">
+                                                <div className="inner-skew flex flex-col md:flex-row justify-between w-full items-start md:items-center">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="text-4xl font-black text-zinc-800 italic tracking-tighter w-12 group-hover:text-red-900 transition-colors">#{reservasi.length - idx}</div>
+                                                        <div>
+                                                            <h3 className="text-xl font-black uppercase tracking-widest text-white group-hover:text-yellow-400 transition-colors">{item.nama}</h3>
+                                                            <p className="text-[10px] text-zinc-500 italic uppercase font-bold">Time: {new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-2 mt-3 md:mt-0">
+                                                        <span className="bg-black border border-zinc-800 px-3 py-1 rounded-sm text-[10px] font-black text-yellow-400 italic">🍴 {item.makanan}</span>
+                                                        <span className="bg-black border border-zinc-800 px-3 py-1 rounded-sm text-[10px] font-black text-blue-400 italic">🥤 {item.minuman}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {page === 'rekap' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="bg-zinc-900/80 p-6 rounded-lg border-t-4 border-yellow-400 shadow-xl">
+                                    <h2 className="racing-font text-3xl text-yellow-400 mb-6 italic flex items-center justify-between">
+                                        TIRE STRATEGY 
+                                        <span className="text-sm bg-yellow-400 text-black px-2 not-italic">MAKANAN</span>
+                                    </h2>
+                                    <div className="space-y-2">
+                                        {getRekap('makanan').map(([name, count]) => (
+                                            <div key={name} className="flex justify-between items-center py-3 border-b border-zinc-800 font-black group hover:bg-zinc-800/50 px-2 rounded transition-all">
+                                                <span className="text-sm uppercase italic tracking-tighter">{name}</span>
+                                                <span className="bg-red-600 px-3 py-1 text-xs skew-x-[-10deg] shadow-[3px_3px_0px_#000]">{count} UNIT</span>
+                                            </div>
+                                        ))}
+                                        {getRekap('makanan').length === 0 && <p className="text-zinc-600 text-center italic text-sm py-4">Belum ada data klasemen.</p>}
+                                    </div>
+                                </div>
+                                <div className="bg-zinc-900/80 p-6 rounded-lg border-t-4 border-blue-600 shadow-xl">
+                                    <h2 className="racing-font text-3xl text-blue-400 mb-6 italic flex items-center justify-between">
+                                        COOLING SYSTEM
+                                        <span className="text-sm bg-blue-600 text-white px-2 not-italic">MINUMAN</span>
+                                    </h2>
+                                    <div className="space-y-2">
+                                        {getRekap('minuman').map(([name, count]) => (
+                                            <div key={name} className="flex justify-between items-center py-3 border-b border-zinc-800 font-black group hover:bg-zinc-800/50 px-2 rounded transition-all">
+                                                <span className="text-sm uppercase italic tracking-tighter">{name}</span>
+                                                <span className="bg-blue-600 px-3 py-1 text-xs skew-x-[-10deg] shadow-[3px_3px_0px_#000]">{count} UNIT</span>
+                                            </div>
+                                        ))}
+                                        {getRekap('minuman').length === 0 && <p className="text-zinc-600 text-center italic text-sm py-4">Belum ada data klasemen.</p>}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    <footer className="p-8 text-center bg-black/50">
+                        <div className="h-1 bg-gradient-to-r from-transparent via-red-600 to-transparent mb-4"></div>
+                        <p className="text-[9px] font-black tracking-[8px] text-zinc-600 uppercase italic">
+                            Haji Balap Racing Team • Pamekasan • Est. 2024
+                        </p>
+                    </footer>
                 </div>
+            );
+        }
 
-                <div>
-                  <label className="block text-[10px] font-black text-zinc-500 uppercase mb-1 tracking-widest">Pilih Bahan Bakar (Makanan)</label>
-                  <select 
-                    value={formData.makanan}
-                    onChange={e => setFormData({...formData, makanan: e.target.value})}
-                    className="w-full bg-black border-2 border-zinc-800 rounded-lg p-3 focus:border-yellow-400 outline-none transition-all font-bold italic"
-                  >
-                    <option value="">-- Pilih Makanan --</option>
-                    {MENU_MAKANAN.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-black text-zinc-500 uppercase mb-1 tracking-widest">Pilih Pelumas (Minuman)</label>
-                  <select 
-                    value={formData.minuman}
-                    onChange={e => setFormData({...formData, minuman: e.target.value})}
-                    className="w-full bg-black border-2 border-zinc-800 rounded-lg p-3 focus:border-yellow-400 outline-none transition-all font-bold italic"
-                  >
-                    <option value="">-- Pilih Minuman --</option>
-                    {MENU_MINUMAN.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                </div>
-
-                <button 
-                  disabled={loading}
-                  type="submit"
-                  className="w-full bg-yellow-400 hover:bg-yellow-300 text-black font-black py-4 rounded-lg uppercase italic tracking-tighter text-xl transition-all shadow-[0_4px_0_0_#000] active:translate-y-1 active:shadow-none border-2 border-black"
-                >
-                  {loading ? 'STARTING ENGINE...' : 'START BUKBER! 🏁'}
-                </button>
-              </form>
-            </div>
-          </section>
-        )}
-
-        {view === 'peserta' && (
-          <section className="animate-in fade-in slide-in-from-bottom-4">
-            <div className="flex justify-between items-end mb-6">
-              <h2 className="text-2xl font-black italic text-yellow-400 uppercase leading-none">PADDOCK PESERTA</h2>
-              <span className="bg-white text-black text-[10px] font-black px-2 py-1 rounded italic uppercase">Total: {peserta.length}</span>
-            </div>
-            
-            <div className="space-y-3">
-              {peserta.length === 0 ? (
-                <div className="text-center py-20 bg-zinc-900/50 rounded-xl border-2 border-dashed border-zinc-800 text-zinc-600 italic font-bold uppercase tracking-widest">
-                  Garis Start Masih Kosong...
-                </div>
-              ) : (
-                peserta.slice().reverse().map((p, i) => (
-                  <div key={i} className="bg-zinc-900 border-l-8 border-yellow-400 p-4 rounded-r-lg flex justify-between items-center shadow-lg transform transition-transform hover:scale-[1.02]">
-                    <div>
-                      <h3 className="font-black italic text-lg leading-tight uppercase tracking-tighter">{p.nama}</h3>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="text-[10px] text-zinc-400 font-bold uppercase bg-black px-2 py-0.5 rounded">🍴 {p.makanan}</span>
-                        <span className="text-[10px] text-zinc-400 font-bold uppercase bg-black px-2 py-0.5 rounded">🥤 {p.minuman}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
-        )}
-
-        {view === 'rekap' && (
-          <section className="animate-in fade-in slide-in-from-bottom-4 space-y-8">
-             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="h-8 w-2 bg-yellow-400"></div>
-                <h2 className="text-2xl font-black italic text-white uppercase">REKAP LOGISTIK</h2>
-              </div>
-              
-              <div className="grid grid-cols-1 gap-4">
-                <div className="bg-zinc-900 rounded-xl overflow-hidden border-2 border-zinc-800 shadow-xl">
-                  <div className="bg-zinc-800 p-3 text-xs font-black uppercase tracking-widest flex justify-between">
-                    <span>ITEM MAKANAN</span>
-                    <span className="text-yellow-400">QTY</span>
-                  </div>
-                  <div className="p-2 space-y-1">
-                    {Object.entries(getRekap().makanan).length > 0 ? Object.entries(getRekap().makanan).map(([item, qty]) => (
-                      <div key={item} className="flex justify-between items-center p-3 border-b border-zinc-800 last:border-0 hover:bg-black/20 transition-colors">
-                        <span className="font-bold italic text-sm uppercase">{item}</span>
-                        <span className="bg-yellow-400 text-black px-3 py-1 rounded font-black italic text-lg">{qty}</span>
-                      </div>
-                    )) : <div className="p-4 text-center text-zinc-600 italic uppercase">Kosong Melompong</div>}
-                  </div>
-                </div>
-
-                <div className="bg-zinc-900 rounded-xl overflow-hidden border-2 border-zinc-800 shadow-xl">
-                  <div className="bg-zinc-800 p-3 text-xs font-black uppercase tracking-widest flex justify-between">
-                    <span>ITEM MINUMAN</span>
-                    <span className="text-yellow-400">QTY</span>
-                  </div>
-                  <div className="p-2 space-y-1">
-                    {Object.entries(getRekap().minuman).length > 0 ? Object.entries(getRekap().minuman).map(([item, qty]) => (
-                      <div key={item} className="flex justify-between items-center p-3 border-b border-zinc-800 last:border-0 hover:bg-black/20 transition-colors">
-                        <span className="font-bold italic text-sm uppercase">{item}</span>
-                        <span className="bg-yellow-400 text-black px-3 py-1 rounded font-black italic text-lg">{qty}</span>
-                      </div>
-                    )) : <div className="p-4 text-center text-zinc-600 italic uppercase">Kosong Melompong</div>}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-      </main>
-
-      {/* Navigasi */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-black border-t-4 border-zinc-800 flex z-50 shadow-[0_-10px_20px_rgba(0,0,0,0.5)]">
-        <NavItem id="form" label="Register" icon="🚲" />
-        <NavItem id="peserta" label="Peserta" icon="🏁" />
-        <NavItem id="rekap" label="Rekap" icon="📊" />
-      </nav>
-    </div>
-  );
-}
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+    
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</body>
+</html>
